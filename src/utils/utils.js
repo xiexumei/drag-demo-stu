@@ -1,3 +1,5 @@
+import Vue from 'vue';
+
 export function deepCopy(target) {
     if (typeof target == 'object') {
         const result = Array.isArray(target) ? [] : {};
@@ -13,4 +15,8 @@ export function deepCopy(target) {
     }
 
     return target;
+}
+
+export function $(selector) {
+    return document.querySelector(selector);
 }
