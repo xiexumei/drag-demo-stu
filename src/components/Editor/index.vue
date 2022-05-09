@@ -5,12 +5,25 @@
         }">
     <!--网格线-->
     <Grid />
-
     <!--页面组件列表展示-->
     <Shape  v-for="(item,index) in componentData"
             :key="item.id"
        
-            :default-style="item.style" :style="getShapeStyle(item.style)" :active="item.id==(curComponent || {}).id" :element="item" :index="index" />
+            :default-style="item.style" :style="getShapeStyle(item.style)"  :active="item.id === (curComponent || {}).id" :element="item" :index="index">
+            <component    
+            v-if="item.component != 'v-text'" 
+            :is="item.component" 
+            :id="'component' + item.id" 
+            class="component" 
+            :style="getComponentStyle(item.style)"   
+            :prop-value="item.propValue"
+                :element="item"/>
+
+
+    </Shape>
+
+    <!--右击菜单-->
+    <Contextmenu/>
 </div>
 </template>
 
@@ -18,8 +31,9 @@
 import { mapState } from "vuex";
 import Grid from "./Grid";
 import { changeStyleWithScale } from "@/utils/translate";
-
+import { getStyle, getComponentRotatedStyle } from "@/utils/style";
 import Shape from "./Shape.vue";
+import Contextmenu from "./ContextMenu.vue";
 export default {
   props: {
     isEdit: {
@@ -29,7 +43,8 @@ export default {
   },
   components: {
     Grid,
-    Shape
+    Shape,
+    Contextmenu
   },
   mounted() {
     // 获取编辑器元素
@@ -43,10 +58,24 @@ export default {
   ]),
   methods: {
     changeStyleWithScale,
+    //处理鼠标右击事件
     handleContextMenu(e) {
+      debugger
       e.stopPropagation();
       e.preventDefault();
       let target = e.target;
+      let top = e.offsetY; //相对于编辑器的位置
+      let left = e.offsetX;
+      while (target instanceof SVGElement) {
+        //如果点击的是下面的svg画布元素
+        target = target.parentNode;
+      }
+      while (!target.className.toString().includes("editor")) {
+        left = left + target.offsetLeft;
+        top = top + target.offsetTop;
+        target = target.parentNode;
+      }
+      this.$store.commit("showContextMenu", { top, left });
     },
     handleMouseDown(e) {},
 
@@ -62,6 +91,9 @@ export default {
       });
 
       return result;
+    },
+    getComponentStyle(style) {
+      return getStyle(style, ["top", "left", "width", "height", "rotate"]);
     }
   }
 };

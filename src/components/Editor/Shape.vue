@@ -1,20 +1,18 @@
 <template>
 <div class="shape" :class="active" @click="selectCurComponent" @mousedown="handleMouseDownOnShape">
-    <span v-show="isActive()" class="iconfont icon-xiangyouxuanzhuan"></span>
+    <span v-show="isActive()" @mousedown="handleRotate" class="iconfont icon-xiangyouxuanzhuan"></span>
     <span v-show="element.isLock" class="iconfont icon-suo"></span>
-    <div class="shape-point" v-for="item in (isActive()?pointList:[])" :key="item" >
-
+    <div class="shape-point" v-for="item in (isActive()?pointList:[])" :key="item" :style="getPointStyle(item)" @mousedown="handleMouseDownOnPoint(item, $event)">
     </div>
-    <div class="shape-item">
-
-    </div>
-    <!-- <slot></slot> --> 
+    <slot></slot>
 </div>
 </template>
 
 <script>
 import eventBus from "@/utils/eventBus";
 import { mapState } from "vuex";
+import { mod360 } from "@/utils/translate";
+import calculateComponentPositonAndSize from "@/utils/calculateComponentPositonAndSize";
 export default {
   props: {
     active: {
@@ -43,11 +41,100 @@ export default {
   data() {
     return {
       pointList: ["lt", "t", "rt", "r", "rb", "b", "lb", "l"], // 八个方向
-      cusors: {}
+      cusors: {},
+      initialAngle: {
+        // 每个点对应的初始角度
+        lt: 0,
+        t: 45,
+        rt: 90,
+        r: 135,
+        rb: 180,
+        b: 225,
+        lb: 270,
+        l: 315
+      },
+      angleToCursor: [
+        // 每个范围的角度对应的光标
+        {
+          start: 338,
+          end: 23,
+          cursor: "nw"
+        },
+        {
+          start: 23,
+          end: 68,
+          cursor: "n"
+        },
+        {
+          start: 68,
+          end: 113,
+          cursor: "ne"
+        },
+        {
+          start: 113,
+          end: 158,
+          cursor: "e"
+        },
+        {
+          start: 158,
+          end: 203,
+          cursor: "se"
+        },
+        {
+          start: 203,
+          end: 248,
+          cursor: "s"
+        },
+        {
+          start: 248,
+          end: 293,
+          cursor: "sw"
+        },
+        {
+          start: 293,
+          end: 338,
+          cursor: "w"
+        }
+      ]
     };
   },
-
+  mounted() {
+    // 用于 Group 组件
+    if (this.curComponent) {
+      this.cursors = this.getCursor(); // 根据旋转角度获取光标位置
+    }
+  },
+  computed: mapState(["curComponent", "editor"]),
   methods: {
+    getCursor() {
+      const { angleToCursor, initialAngle, pointList, curComponent } = this;
+      const rotate = mod360(curComponent.style.rotate); // 取余 360
+      const result = {};
+      let lastMatchIndex = -1; // 从上一个命中的角度的索引开始匹配下一个，降低时间复杂度
+
+      pointList.forEach(point => {
+        const angle = mod360(initialAngle[point] + rotate);
+        const len = angleToCursor.length;
+        while (true) {
+          lastMatchIndex = (lastMatchIndex + 1) % len;
+          const angleLimit = angleToCursor[lastMatchIndex];
+          if (angle < 23 || angle >= 338) {
+            result[point] = "nw-resize";
+
+            return;
+          }
+
+          if (angleLimit.start <= angle && angle < angleLimit.end) {
+            result[point] = angleLimit.cursor + "-resize";
+
+            return;
+          }
+        }
+      });
+
+      return result;
+    },
+
     isActive() {
       return this.active && !this.element.isLock;
     },
@@ -73,8 +160,12 @@ export default {
         index: this.index
       });
       if (this.element.isLock) return;
+
+      this.cursors = this.getCursor();
       //根据旋转角度获取光标位置 this.cursors = this.getCursor();
-      const pos = { ...this.defaultStyle };
+      const pos = {
+        ...this.defaultStyle
+      };
       const startY = e.clientY;
       const startX = e.clientX;
       //如果直接修改属性 ，值的类型会变为字符串  所以需要转为数值类型
@@ -89,7 +180,6 @@ export default {
         const curY = moveEvent.clientY;
         pos.top = curY - startY + startTop; //开始的位置 + 移动的距离
         pos.left = curX - startX + startLeft;
-        debugger;
         //修改当前组件样式
         this.$store.commit("setShapeStyle", pos);
         this.$nextTick(() => {
@@ -110,6 +200,184 @@ export default {
 
       document.addEventListener("mousemove", move);
       document.addEventListener("mouseup", up);
+    },
+
+    //生成八个点的样式
+    getPointStyle(point) {
+      const { width, height } = this.defaultStyle;
+      const hasT = /t/.test(point);
+      const hasB = /b/.test(point);
+      const hasL = /l/.test(point);
+      const hasR = /r/.test(point);
+      let newLeft = 0;
+      let newTop = 0;
+
+      // 四个角的点
+      if (point.length === 2) {
+        newLeft = hasL ? 0 : width;
+        newTop = hasT ? 0 : height;
+      } else {
+        // 上下两点的点，宽度居中
+        if (hasT || hasB) {
+          newLeft = width / 2;
+          newTop = hasT ? 0 : height;
+        }
+
+        // 左右两边的点，高度居中
+        if (hasL || hasR) {
+          newLeft = hasL ? 0 : width;
+          newTop = Math.floor(height / 2);
+        }
+      }
+
+      const style = {
+        marginLeft: "-4px",
+        marginTop: "-4px",
+        left: `${newLeft}px`,
+        top: `${newTop}px`,
+        cursor: this.cursors[point]
+      };
+
+      return style;
+    },
+
+    handleMouseDownOnPoint(point, e) {
+      this.$store.commit("setInEditorStatus", true);
+      this.$store.commit("setClickComponentStatus", true);
+      e.stopPropagation();
+      e.preventDefault();
+
+      const style = { ...this.defaultStyle };
+
+      // 组件宽高比
+      const proportion = style.width / style.height;
+
+      // 组件中心点
+      const center = {
+        x: style.left + style.width / 2,
+        y: style.top + style.height / 2
+      };
+
+      // 获取画布位移信息
+      const editorRectInfo = this.editor.getBoundingClientRect();
+
+      // 获取 point 与实际拖动基准点的差值 @justJokee
+      // fix https://github.com/woai3c/visual-drag-demo/issues/26#issue-937686285
+      const pointRect = e.target.getBoundingClientRect();
+      // 当前点击圆点相对于画布的中心坐标
+      const curPoint = {
+        x: Math.round(
+          pointRect.left - editorRectInfo.left + e.target.offsetWidth / 2
+        ),
+        y: Math.round(
+          pointRect.top - editorRectInfo.top + e.target.offsetHeight / 2
+        )
+      };
+
+      // 获取对称点的坐标
+      const symmetricPoint = {
+        x: center.x - (curPoint.x - center.x),
+        y: center.y - (curPoint.y - center.y)
+      };
+
+      // 是否需要保存快照
+      let needSave = false;
+      let isFirst = true;
+
+      const needLockProportion = this.isNeedLockProportion();
+      const move = moveEvent => {
+        // 第一次点击时也会触发 move，所以会有“刚点击组件但未移动，组件的大小却改变了”的情况发生
+        // 因此第一次点击时不触发 move 事件
+        if (isFirst) {
+          isFirst = false;
+          return;
+        }
+
+        needSave = true;
+        const curPositon = {
+          x: moveEvent.clientX - editorRectInfo.left,
+          y: moveEvent.clientY - editorRectInfo.top
+        };
+
+        calculateComponentPositonAndSize(
+          point,
+          style,
+          curPositon,
+          proportion,
+          needLockProportion,
+          {
+            center,
+            curPoint,
+            symmetricPoint
+          }
+        );
+
+        this.$store.commit("setShapeStyle", style);
+      };
+
+      const up = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        needSave && this.$store.commit("recordSnapshot");
+      };
+
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    },
+    isNeedLockProportion() {
+      if (this.element.component != "Group") return false;
+      const ratates = [0, 90, 180, 360];
+      for (const component of this.element.propValue) {
+        if (!ratates.includes(mod360(parseInt(component.style.rotate)))) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    handleRotate(e) {
+      //当前的编辑状态
+      this.$store.commit("setClickComponentStatus", true);
+      e.preventDefault();
+      e.stopPropagation();
+      //初始坐标和初始角度
+      const pos = { ...this.defaultStyle };
+      const startY = e.clientY;
+      const startX = e.clientX;
+      const startRotate = pos.rotate;
+      //获取元素的中心位置
+      const rect = this.$el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      //旋转前的角度
+      const rotateDegreeBefore =
+        Math.atan2(startY - centerY, startX - centerX) / (Math.PI / 180);
+      //如果元素没有移动 ，则不保存快照
+      let hasMove = false;
+      const move = moveEvent => {
+        hasMove = true;
+        const curX = moveEvent.clientX;
+        const curY = moveEvent.clientY;
+
+        //旋转后的角度
+        const rotateDegreeAfter =
+          Math.atan2(curY - centerY, curX - centerX) / (Math.PI / 180);
+        pos.rotate = startRotate + rotateDegreeAfter - rotateDegreeBefore;
+        // 修改当前组件样式
+        this.$store.commit("setShapeStyle", pos);
+      };
+
+      //鼠标拿起来的事件
+      const up = () => {
+        hasMove && this.$store.commit("recordSnapshot");
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        this.cursors = this.getCursor(); // 根据旋转角度获取光标位置
+      };
+
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
     }
   }
 };
@@ -118,6 +386,9 @@ export default {
 <style lang="scss" scoped>
 .shape {
   position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 1px solid #000;
 
   &:hover {
     cursor: move;
@@ -143,5 +414,20 @@ export default {
   width: 200px;
   height: 200px;
   border: 1px solid #000;
+}
+
+.icon-xiangyouxuanzhuan {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: grab;
+  color: #59c7f9;
+  font-size: 20px;
+  font-weight: 600;
+
+  &:active {
+    cursor: grabbing;
+  }
 }
 </style>
