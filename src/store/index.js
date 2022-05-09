@@ -1,12 +1,16 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import compose from './compose';
-import snapshot from './snapshot'
+import snapshot from './snapshot';
+import contextmenu from './contextmenu';
+import copy from './copy';
 Vue.use(Vuex);
 
 const data = {
     state: {
         ...compose.state,
+        ...contextmenu.state,
+        ...copy.state,
         canvasStyleData: { // 页面全局数据
             width: 1200,
             height: 740,
@@ -22,7 +26,8 @@ const data = {
     mutations: {
         ...compose.mutations,
         ...snapshot.mutations,
-
+        ...contextmenu.mutations,
+        ...copy.mutations,
         //设置组件数据
         setComponentData(state, componentData = []) {
             Vue.set(state, 'componentData', componentData)
@@ -51,17 +56,21 @@ const data = {
         },
         //修改当前组件样式
         setShapeStyle({ curComponent }, { top, left, width, height, rotate }) {
+
             if (top) curComponent.style.top = top;
             if (left) curComponent.style.left = left;
             if (width) curComponent.style.width = width;
             if (height) curComponent.style.height = height;
             if (rotate) curComponent.style.rotate = rotate;
+            console.log(curComponent, "curComponent")
 
         },
 
         //设置组件样式
         setCurComponent(state, { component, index }) {
-            state.curComponent = component;
+
+            Vue.set(state, "curComponent", component)
+            // state.curComponent = component;
             state.curComponentIndex = index;
         }
 
