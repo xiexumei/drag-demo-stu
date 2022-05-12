@@ -187,12 +187,14 @@ export default {
           //后面两个参数代表鼠标移动对的方向
           //curY - startY>0 true表示向下移动   false表示向上移动
           //curX - startX>0 true表示向右移动   false表示向左移动
-          // eventBus.$emit("move", curY - startY > 0, curX - startX > 0);
+          eventBus.$emit("move", curY - startY > 0, curX - startX > 0);
         });
       };
 
       const up = () => {
         hasMove && this.$store.commit("recordSnapshot");
+        //监听元素停止移动事件 用于隐藏标线
+        eventBus.$emit('unmove');
         //触发元素停止移动事件
         document.removeEventListener("mousemove", move);
         document.removeEventListener("mouseup", up);
@@ -429,5 +431,11 @@ export default {
   &:active {
     cursor: grabbing;
   }
+}
+
+.icon-suo {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 </style>

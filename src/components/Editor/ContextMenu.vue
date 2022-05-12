@@ -5,14 +5,15 @@
             <template v-if="!curComponent.isLock">
                 <li @click="copy">复制</li>
                 <li @click="paste">粘贴</li>
-                <li>剪切</li>
-                <li>删除</li>
-                <li>锁定</li>
-                <li>置顶</li>
-                <li>置底</li>
-                <li>上移</li>
-                <li>下移</li>
+                <li @click="cut">剪切</li>
+                <li @click="deleteComponent">删除</li>
+                <li @click="lock">锁定</li>
+                <li @click="topComponent">置顶</li>
+                <li @click="bottomComponent">置底</li>
+                <li @click="upComponent">上移</li>
+                <li @click="downComponent">下移</li>
             </template>
+            <li v-else @click="unlock">解锁</li>
         </template>
         <li v-else>黏贴</li>
     </ul>
@@ -30,6 +31,12 @@ export default {
 
   computed: mapState(["menuTop", "menuLeft", "menuShow", "curComponent"]),
   methods: {
+    unlock() {
+      this.$store.commit("unlock");
+    },
+    lock() {
+      this.$store.commit("lock");
+    },
     handleMouseUp() {},
     //复制
     copy() {
@@ -38,6 +45,33 @@ export default {
 
     paste() {
       this.$store.commit("paste", true);
+    },
+
+    cut() {
+      this.$store.commit("cut");
+    },
+
+    //删除
+    deleteComponent() {
+      this.$store.commit("deleteComponent");
+    },
+
+    //置顶
+    topComponent() {
+      this.$store.commit("topComponent");
+    },
+
+    bottomComponent() {
+      this.$store.commit("bottomComponent");
+    },
+    downComponent() {
+      this.$store.commit("downComponent");
+    },
+    topComponent() {
+      this.$store.commit("topComponent");
+    },
+    upComponent() {
+      this.$store.commit("upComponent");
     }
   }
 };
@@ -47,6 +81,7 @@ export default {
 .contextmenu {
   position: absolute;
   z-index: 1000;
+
   ul {
     border: 1px solid #e4e7ed;
     border-radius: 4px;
