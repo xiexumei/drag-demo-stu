@@ -4,6 +4,8 @@ import compose from './compose';
 import snapshot from './snapshot';
 import contextmenu from './contextmenu';
 import copy from './copy';
+import lock from './lock';
+import layer from './layer.js';
 Vue.use(Vuex);
 
 const data = {
@@ -11,6 +13,8 @@ const data = {
         ...compose.state,
         ...contextmenu.state,
         ...copy.state,
+        ...lock.state,
+        ...layer.state,
         canvasStyleData: { // 页面全局数据
             width: 1200,
             height: 740,
@@ -28,6 +32,8 @@ const data = {
         ...snapshot.mutations,
         ...contextmenu.mutations,
         ...copy.mutations,
+        ...lock.mutations,
+        ...layer.mutations,
         //设置组件数据
         setComponentData(state, componentData = []) {
             Vue.set(state, 'componentData', componentData)
@@ -43,6 +49,25 @@ const data = {
                 state.componentData.splice(index, 0, component);
             } else {
                 state.componentData.push(component)
+            }
+
+        },
+
+        //删除
+        deleteComponent(state, index) {
+            if (index == undefined) {
+                index = state.curComponentIndex;
+            }
+
+            if (index == state.curComponentIndex) {
+                //将当前的先清空
+                state.curComponent = null;
+                state.curComponentIndex = null;
+            }
+            debugger
+            //从组件列表里面删除
+            if (/\d/.test(index)) {
+                state.componentData.splice(index, 1)
             }
 
         },
@@ -64,6 +89,10 @@ const data = {
             if (rotate) curComponent.style.rotate = rotate;
             console.log(curComponent, "curComponent")
 
+        },
+
+        setShapeSingleStyle({ curComponent }, { key, value }) {
+            curComponent.style[key] = value
         },
 
         //设置组件样式

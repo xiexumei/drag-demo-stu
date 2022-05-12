@@ -1,8 +1,8 @@
 export default {
     state: {
-        menuTop: 0,
-        menuLeft: 0,
-        menuShow: false
+        menuTop: 0, //当前的top
+        menuLeft: 0, //当前的left
+        menuShow: false //是否显示
     },
 
     mutations: {

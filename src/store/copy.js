@@ -15,7 +15,10 @@ export default {
                 return
 
             }
+            // 如果有剪切的数据，需要先还原
+            restorePreCutData(state)
             copyData(state);
+            state.isCut = false
         },
         //粘贴
         paste(state, isMouse) {
@@ -33,7 +36,22 @@ export default {
             }
 
             data.id = generateID();
-            store.commit('addComponent',{component:deepCopy(data)})
+            store.commit('addComponent', { component: deepCopy(data) })
+            if (state.isCut) {
+                state.copyData = null;
+            }
+        },
+        //剪切
+        cut(state) {
+            if (!state.curComponent) {
+                toast('请选择组件')
+                return;
+            }
+
+            copyData(state);
+            store.commit('deleteComponent');
+            state.isCut = true;
+
         }
     }
 
@@ -44,6 +62,12 @@ function restorePreCutData(state) {
     if (state.isCut && state.copyData) {
         const data = deepCopy(state.copyData.data);
         const index = state.copyData.index;
+        data.id = generateID();
+        store.commit('addComponent', { component: data, index })
+        if (state.curComponentIndex >= index) {
+            state.curComponentIndex++
+        }
+
 
     }
 }
